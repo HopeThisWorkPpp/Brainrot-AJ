@@ -9,7 +9,7 @@ local RunService = game:GetService("RunService")
 -- CONFIGURATION
 local AJ_Settings = {
     WebhookURL = "https://discord.com/api/webhooks/1495925436633321583/v-tHj-mKfdl3xrjq0m2tsLqtiezxEPtYI6MRffeqm4FXcER1CM3B6DkczbDROHovaYGD", -- Paste your Discord Webhook URL here
-    ItemToWatch = "Brainrot",          -- Name of the item the bot looks for
+    ItemToWatch = "Noobini Pizzanini",          -- Name of the item the bot looks for
     ScannerDelay = 15,                 -- Seconds between scans
     VpsMode = true                     -- Set to true to disable graphics/lag
 }
