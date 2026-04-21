@@ -85,11 +85,11 @@ local function sendInvite(target)
     if not tl then return false end
     local sb = tl.bg.SearchFrame.SearchBox
     sb.Text = target
-    task.wait(0.1)
+    task.wait(0.05)
     pcall(function() firesignal(sb.FocusLost, true) end)
-    task.wait(0.1)
+    task.wait(0.05)
     pcall(function() firesignal(sb.ReturnPressedFromOnScreenKeyboard) end)
-    task.wait(0.5)
+    task.wait(0.3)
     local list = tl.Global.List
     for _, player in pairs(list:GetChildren()) do
         if player:IsA("Frame") then
@@ -115,7 +115,7 @@ task.spawn(function()
                 end
             end
         end)
-        task.wait(0.5)
+        task.wait(0.1)
     end
 end)
 
@@ -133,26 +133,34 @@ while true do
             if otherUser:find(MY_ALT_USER:lower()) then
                 local scrolling = innerGui:FindFirstChild("ScrollingFrame", true)
                 if scrolling then
+                    local slots = {}
                     for _, slot in pairs(scrolling:GetChildren()) do
                         if slot.Name:sub(1, 9) == "Selection" then
-                            local spacer = slot:FindFirstChild("Spacer")
-                            if spacer then
-                                local stroke = spacer:FindFirstChild("UIStroke")
-                                if stroke and not (math.floor(stroke.Color.R * 255) == 0 and math.floor(stroke.Color.G * 255) == 255) then
-                                    pcall(function() firesignal(spacer.Activated) end)
-                                    task.wait(0.05)
-                                end
+                            table.insert(slots, slot)
+                        end
+                    end
+                    table.sort(slots, function(a, b) return a.Name < b.Name end)
+                    
+                    for _, slot in ipairs(slots) do
+                        local spacer = slot:FindFirstChild("Spacer")
+                        if spacer then
+                            local stroke = spacer:FindFirstChild("UIStroke")
+                            if stroke and not (math.floor(stroke.Color.R * 255) == 0 and math.floor(stroke.Color.G * 255) == 255) then
+                                pcall(function() firesignal(spacer.Activated) end)
+                                task.wait(1.1)
                             end
                         end
                     end
                 end
                 
-                task.wait(0.5)
                 local readyBtn = innerGui:FindFirstChild("Other"):FindFirstChild("ReadyButton")
                 local readyIndicator = innerGui:FindFirstChild("Your"):FindFirstChild("Ready")
                 
-                if readyBtn then
-                    pcall(function() firesignal(readyBtn.Activated) end)
+                while true do
+                    if not tradeIsActive() then break end
+                    if readyIndicator and readyIndicator.Visible then break end
+                    if readyBtn then pcall(function() firesignal(readyBtn.Activated) end) end
+                    task.wait(1)
                 end
             end
         end
@@ -160,7 +168,14 @@ while true do
         if tradeIsActive() then
             local innerGui = playerGui.TradeLiveTrade.TradeLiveTrade
             local readyBtn = innerGui:FindFirstChild("Other"):FindFirstChild("ReadyButton")
-            if readyBtn then pcall(function() firesignal(readyBtn.Activated) end) end
+            local readyIndicator = innerGui:FindFirstChild("Your"):FindFirstChild("Ready")
+            
+            while true do
+                if not tradeIsActive() then break end
+                if readyIndicator and readyIndicator.Visible then break end
+                if readyBtn then pcall(function() firesignal(readyBtn.Activated) end) end
+                task.wait(1)
+            end
         end
     end
     task.wait(0.5)
